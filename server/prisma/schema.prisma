@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TRAINER
+  STUDENT
+}
+
+enum MuscleGroup {
+  CHEST
+  BACK
+  LEGS
+  SHOULDERS
+  ARMS
+  CORE
+  FULL_BODY
+}
+
+enum Equipment {
+  BODYWEIGHT
+  DUMBBELL
+  BARBELL
+  MACHINE
+  KETTLEBELL
+  BAND
+  OTHER
+}
+
+model User {
+  id           String          @id @default(uuid())
+  name         String
+  email        String          @unique
+  passwordHash String
+  role         Role            @default(STUDENT)
+  createdAt    DateTime        @default(now())
+  refreshTokens RefreshToken[]
+  studentProfile StudentProfile?
+  workoutPlansAsStudent WorkoutPlan[] @relation("StudentPlans")
+  workoutPlansAsTrainer WorkoutPlan[] @relation("TrainerPlans")
+  progressLogs ProgressLog[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  revokedAt DateTime?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model StudentProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  height    Float?
+  goal      String?
+  birthDate DateTime?
+  createdAt DateTime @default(now())
+}
+
+model Exercise {
+  id          String      @id @default(uuid())
+  name        String
+  muscleGroup MuscleGroup
+  equipment   Equipment
+  createdAt   DateTime    @default(now())
+  workoutItems WorkoutItem[]
+
+  @@index([muscleGroup])
+}
+
+model WorkoutPlan {
+  id        String   @id @default(uuid())
+  studentId String
+  trainerId String
+  title     String
+  goal      String?
+  startDate DateTime
+  endDate   DateTime?
+  createdAt DateTime @default(now())
+  student   User     @relation("StudentPlans", fields: [studentId], references: [id], onDelete: Cascade)
+  trainer   User     @relation("TrainerPlans", fields: [trainerId], references: [id], onDelete: Cascade)
+  days      WorkoutDay[]
+
+  @@index([studentId])
+  @@index([trainerId])
+}
+
+model WorkoutDay {
+  id       String   @id @default(uuid())
+  planId   String
+  dayOfWeek Int
+  title    String
+  plan     WorkoutPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  items    WorkoutItem[]
+
+  @@index([planId])
+}
+
+model WorkoutItem {
+  id          String   @id @default(uuid())
+  dayId       String
+  exerciseId  String
+  sets        Int
+  reps        Int
+  restSeconds Int
+  notes       String?
+  day         WorkoutDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  exercise    Exercise  @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+
+  @@index([dayId])
+}
+
+model ProgressLog {
+  id             String   @id @default(uuid())
+  studentId      String
+  date           DateTime
+  weightKg       Float
+  bodyFatPercent Float?
+  notes          String?
+  student        User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([date])
+}
