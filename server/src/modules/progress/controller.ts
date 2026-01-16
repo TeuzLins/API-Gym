@@ -16,3 +16,25 @@ export async function getProgress(req: AuthRequest, res: Response) {
   const progress = await listProgress({ studentId });
   res.json(progress);
 }
+
+export async function postProgress(req: AuthRequest, res: Response) {
+  const data = createSchema.parse(req.body);
+  const studentId = req.user?.role === 'STUDENT' ? req.user.id : data.studentId;
+  if (!studentId) {
+    return res.status(400).json({ message: 'studentId é obrigatório', code: 'STUDENT_REQUIRED' });
+  }
+  const log = await createProgress({
+    studentId,
+    date: new Date(data.date),
+    weightKg: data.weightKg,
+    bodyFatPercent: data.bodyFatPercent,
+    notes: data.notes,
+  });
+  res.status(201).json(log);
+}
+
+export async function removeProgress(req: AuthRequest, res: Response) {
+  const { id } = req.params;
+  await deleteProgress(id);
+  res.status(204).send();
+}
